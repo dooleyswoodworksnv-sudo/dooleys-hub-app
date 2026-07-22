@@ -1,0 +1,572 @@
+/* ============ Sketch Studio — SketchUp-style workspace ============ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  color: #222;
+  background: #e9e9e9;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+.hidden { display: none !important; }
+
+/* ============ Menu bar ============ */
+#menubar {
+  display: flex;
+  align-items: center;
+  background: #f7f7f7;
+  border-bottom: 1px solid #d0d0d0;
+  height: 30px;
+  padding: 0 6px;
+  z-index: 50;
+}
+.menu-logo {
+  font-weight: 600;
+  color: #b32f2f;
+  margin-right: 14px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.menu-root {
+  padding: 5px 10px;
+  cursor: default;
+  border-radius: 4px;
+}
+.menu-root:hover, .menu-root.open { background: #dbe6f2; }
+.menu-spacer { flex: 1; }
+.menu-button {
+  border: 1px solid #c5c5c5;
+  background: #fff;
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.menu-button:hover { background: #eaf2fb; }
+
+#menu-dropdown {
+  position: fixed;
+  min-width: 230px;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  z-index: 100;
+  padding: 4px 0;
+}
+#menu-dropdown .mi {
+  padding: 6px 26px 6px 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  cursor: default;
+  white-space: nowrap;
+}
+#menu-dropdown .mi:hover { background: #dbe6f2; }
+#menu-dropdown .mi .shortcut { color: #888; font-size: 11px; }
+#menu-dropdown .mi.disabled { color: #aaa; }
+#menu-dropdown .mi.disabled:hover { background: none; }
+#menu-dropdown .msep { border-top: 1px solid #e0e0e0; margin: 4px 0; }
+#menu-dropdown .msection { padding: 4px 16px; font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ============ Toolbar ============ */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #efefef;
+  border-bottom: 1px solid #d0d0d0;
+  padding: 3px 8px;
+  z-index: 40;
+}
+.tool-btn, .action-btn {
+  width: 34px;
+  height: 30px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+.tool-btn:hover, .action-btn:hover { background: #e0e9f4; border-color: #b9cfe6; }
+.tool-btn.active { background: #cfe0f2; border-color: #7fa8d0; }
+.tb-sep { width: 1px; height: 22px; background: #d0d0d0; margin: 0 5px; }
+
+/* ============ Main layout ============ */
+#main { flex: 1; display: flex; min-height: 0; position: relative; }
+#viewport-container { flex: 1; position: relative; min-width: 0; }
+#viewport {
+  position: absolute; inset: 0;
+  /* SketchUp-ish sky/ground gradient behind the transparent WebGL canvas */
+  background: linear-gradient(#b8d3e8 0%, #dcebf5 45%, #ffffff 52%, #e8e4d8 60%, #d8d3c3 100%);
+}
+#viewport canvas { display: block; }
+
+#select-rect {
+  position: absolute;
+  border: 1px dashed #1e6bb8;
+  background: rgba(60, 130, 200, 0.12);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ============ Floating panels ============ */
+.floating-panel {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 190px;
+  background: #fbfbfb;
+  border: 1px solid #b9b9b9;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2);
+  z-index: 20;
+  padding-bottom: 8px;
+}
+.panel-title {
+  font-weight: 600;
+  padding: 7px 10px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f0f0f0;
+  border-radius: 6px 6px 0 0;
+}
+#palette-swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 24px);
+  gap: 4px;
+  padding: 10px;
+}
+.swatch {
+  width: 24px; height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,.25);
+  cursor: pointer;
+}
+.swatch.active { outline: 2px solid #1e6bb8; outline-offset: 1px; }
+
+/* ============ 3D mouse (SpaceMouse) ============ */
+#btn-spacemouse.connected { background: #e2f4e4; border-color: #7bc47f; }
+#btn-spacemouse.connected::after { content: " ●"; color: #2e9e36; }
+/* WebHID available but no device granted on this site yet — nudge to click */
+#btn-spacemouse.attention { animation: sm-pulse 1.6s ease-in-out 6; border-color: #e0a23c; }
+@keyframes sm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 162, 60, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(224, 162, 60, 0.45); }
+}
+#spacemouse-panel { width: 220px; }
+.sm-body { padding: 4px 10px 6px; font-size: 12px; }
+.sm-section {
+  font-weight: 600; color: #555;
+  margin: 8px 0 3px; padding-bottom: 2px;
+  border-bottom: 1px solid #e4e4e4;
+}
+.sm-row { display: block; padding: 2px 0; cursor: pointer; user-select: none; }
+.sm-row input { vertical-align: middle; margin-right: 6px; }
+#sm-speed { width: 100%; }
+.sm-note { margin-top: 8px; color: #888; font-size: 11px; line-height: 1.45; }
+.palette-custom { padding: 0 10px; font-size: 12px; }
+.palette-custom input { vertical-align: middle; margin-left: 6px; }
+
+/* ============ Ruby console dock ============ */
+#ruby-dock {
+  width: 400px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  background: #1e1f24;
+  color: #dfe2ea;
+  border-left: 1px solid #444;
+}
+.dock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2a2c33;
+  padding: 6px 10px;
+  font-weight: 600;
+  border-bottom: 1px solid #3a3d46;
+}
+.dock-header-actions button {
+  background: #3a3d46;
+  color: #dfe2ea;
+  border: 1px solid #4c505b;
+  border-radius: 4px;
+  padding: 3px 8px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.dock-header-actions button:hover { background: #4a4e5a; }
+#ruby-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+#ruby-output .ln         { color: #dfe2ea; }
+#ruby-output .ln.echo    { color: #7f8698; }
+#ruby-output .ln.result  { color: #7fd3a0; }
+#ruby-output .ln.error   { color: #ef7b7b; }
+#ruby-output .ln.info    { color: #8ab6e8; }
+.dock-input-area {
+  border-top: 1px solid #3a3d46;
+  display: flex;
+  flex-direction: column;
+}
+#ruby-input {
+  height: 130px;
+  background: #16171b;
+  color: #e6e9f2;
+  border: none;
+  outline: none;
+  resize: vertical;
+  padding: 8px 10px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12.5px;
+  user-select: text;
+}
+.dock-input-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #2a2c33;
+}
+#btn-ruby-run {
+  background: #3d7a4f;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+#btn-ruby-run:hover { background: #499259; }
+#btn-ruby-run:disabled { background: #555; cursor: wait; }
+.ruby-status { font-size: 11px; color: #8b91a0; }
+
+/* ============ Outliner dock ============ */
+#outliner-dock {
+  width: 250px;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  border-right: 1px solid #cfcfcf;
+}
+.outliner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #efefef;
+  padding: 6px 10px;
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+}
+.outliner-header .dock-header-actions button {
+  background: #fff;
+  color: #333;
+  border: 1px solid #c5c5c5;
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.outliner-header .dock-header-actions button:hover { background: #eaf2fb; }
+#outliner-filter {
+  margin: 6px 8px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+}
+#outliner-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 0 10px;
+  font-size: 12.5px;
+}
+
+/* ============ Layers dock ============ */
+#layers-dock {
+  width: 220px;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  border-right: 1px solid #cfcfcf;
+}
+#layers-dock.hidden { display: none; }
+#layers-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0 10px;
+  font-size: 12.5px;
+}
+.layers-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.layers-row:hover { background: #e8f0fa; }
+.layers-row .layers-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.layers-row .layers-count {
+  font-size: 10.5px;
+  color: #888;
+  background: #ececec;
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+.layers-row.layers-off .layers-name { color: #aaa; text-decoration: line-through; }
+.layers-empty { padding: 12px; color: #999; font-style: italic; }
+.outliner-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  cursor: default;
+  white-space: nowrap;
+}
+.outliner-row:hover { background: #e8f0fa; }
+.outliner-row.sel { background: #cfe0f2; }
+.outliner-row .o-arrow {
+  width: 14px;
+  text-align: center;
+  color: #888;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.outliner-row .o-eye {
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.outliner-row.ctx { font-weight: 600; background: #fdf3d8; }
+.outliner-row.o-hidden .o-eye { opacity: 0.25; }
+.outliner-row.o-hidden .o-label { color: #aaa; font-style: italic; }
+.outliner-row .o-label { overflow: hidden; text-overflow: ellipsis; }
+.o-empty { padding: 12px 14px; color: #999; font-size: 12px; }
+
+/* ============ Status bar ============ */
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f2f2f2;
+  border-top: 1px solid #cfcfcf;
+  padding: 3px 10px;
+  height: 26px;
+  font-size: 12px;
+}
+#status-hint { color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-spacer { flex: 1; }
+#vcb-label { color: #666; }
+#vcb-input {
+  width: 120px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  text-align: right;
+  background: #fff;
+}
+
+/* ============ Dialog ============ */
+#dialog-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.35);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#dialog {
+  width: 560px;
+  max-width: 92vw;
+  max-height: 82vh;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.4);
+  display: flex;
+  flex-direction: column;
+}
+#dialog-title {
+  font-weight: 600;
+  font-size: 15px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e4e4e4;
+}
+#dialog-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  line-height: 1.5;
+  user-select: text;
+}
+#dialog-body table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+#dialog-body td, #dialog-body th {
+  border: 1px solid #e0e0e0;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 12px;
+}
+#dialog-body code {
+  background: #f2f2f2;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+#dialog-buttons {
+  padding: 10px 16px;
+  border-top: 1px solid #e4e4e4;
+  text-align: right;
+}
+#dialog-buttons button {
+  padding: 6px 18px;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  background: #f4f4f4;
+  cursor: pointer;
+}
+#dialog-buttons button:hover { background: #e8e8e8; }
+
+/* Drag & drop hint */
+body.dragging-file::after {
+  content: "Drop .rb script or .json model to load";
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(30, 107, 184, .25);
+  border: 4px dashed #1e6bb8;
+  font-size: 26px;
+  font-weight: 600;
+  color: #10467e;
+  z-index: 300;
+  pointer-events: none;
+}
+
+/* ======================= AI ASSISTANT DOCK ======================= */
+#ai-dock {
+  width: 420px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: #1e1f24;
+  color: #dfe2ea;
+  border-left: 1px solid #444;
+}
+#ai-dock.hidden { display: none; }
+#ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ai-bubble {
+  max-width: 92%;
+  padding: 8px 11px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.ai-bubble.user {
+  align-self: flex-end;
+  background: #3d5a99;
+  color: #fff;
+  border-bottom-right-radius: 3px;
+}
+.ai-bubble.ai {
+  align-self: flex-start;
+  background: #2a2c33;
+  border: 1px solid #3a3d46;
+  border-bottom-left-radius: 3px;
+}
+.ai-bubble.ai.muted { color: #9aa1b0; font-style: italic; }
+.ai-bubble code {
+  background: #16171b;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+}
+.ai-script-card {
+  align-self: stretch;
+  border: 1px solid #3a3d46;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #16171b;
+}
+.ai-script-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: #24262d;
+  padding: 5px 9px;
+  font-size: 12px;
+  color: #b9c0d0;
+}
+.ai-script-head button {
+  background: #3a3d46;
+  color: #dfe2ea;
+  border: 1px solid #4c505b;
+  border-radius: 4px;
+  padding: 3px 9px;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.ai-script-head button:hover { background: #4a4e5a; }
+.ai-script-head .ai-run { background: #2e7d4f; border-color: #37975f; }
+.ai-script-head .ai-run:hover { background: #37975f; }
+.ai-script-code {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 11.5px;
+  color: #cdd3e0;
+  white-space: pre;
+}
+#ai-input {
+  height: 74px;
+  background: #16171b;
+  color: #e6e9f2;
+  border: none;
+  outline: none;
+  resize: vertical;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+#btn-ai-send {
+  background: #3d5a99;
+  color: #fff;
+  border: 1px solid #4d6cb0;
+  border-radius: 4px;
+  padding: 4px 14px;
+  cursor: pointer;
+  margin: 6px;
+}
+#btn-ai-send:hover { background: #4d6cb0; }
+#btn-ai-send:disabled { opacity: 0.5; cursor: default; }
