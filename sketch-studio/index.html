@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch Studio — 3D Workspace with Ruby Scripting</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ======================= MENU BAR ======================= -->
+  <div id="menubar">
+    <div class="menu-logo">◆ Sketch Studio</div>
+    <div class="menu-root" data-menu="file">File</div>
+    <div class="menu-root" data-menu="edit">Edit</div>
+    <div class="menu-root" data-menu="camera">Camera</div>
+    <div class="menu-root" data-menu="draw">Draw</div>
+    <div class="menu-root" data-menu="tools">Tools</div>
+    <div class="menu-root" data-menu="site">Site</div>
+    <div class="menu-root" data-menu="window">Window</div>
+    <div class="menu-root" data-menu="extensions">Extensions</div>
+    <div class="menu-root" data-menu="help">Help</div>
+    <div class="menu-spacer"></div>
+    <button id="btn-spacemouse" class="menu-button" title="Connect 3Dconnexion SpaceMouse (WebHID)">🖱 3D Mouse</button>
+    <button id="btn-outliner-toggle" class="menu-button" title="Toggle Outliner">🗂 Outliner</button>
+    <button id="btn-layers-toggle" class="menu-button" title="Show/hide layers (Sheathing, Insulation, Drywall…)">🧱 Layers</button>
+    <button id="btn-console-toggle" class="menu-button" title="Toggle Ruby Console">💎 Ruby Console</button>
+    <button id="btn-ai-toggle" class="menu-button" title="AI Assistant — describe an object and it writes and runs the script">✨ AI Assistant</button>
+  </div>
+  <div id="menu-dropdown" class="hidden"></div>
+
+  <!-- ======================= TOOLBAR ======================= -->
+  <div id="toolbar">
+    <button class="tool-btn" data-tool="select"   title="Select (Space) — click to select, drag for box select, Shift to add">↖</button>
+    <span class="tb-sep"></span>
+    <button class="tool-btn" data-tool="line"     title="Line (L) — click points to draw edges; closing a loop makes a face">✏</button>
+    <button class="tool-btn" data-tool="rect"     title="Rectangle (R) — click two corners">▭</button>
+    <button class="tool-btn" data-tool="circle"   title="Circle (C) — click center, then radius">◯</button>
+    <button class="tool-btn" data-tool="arc"      title="Arc (A) — click start, end, then bow it out. Type 20s for more segments">◠</button>
+    <span class="tb-sep"></span>
+    <button class="tool-btn" data-tool="pushpull" title="Push/Pull (P) — click a face, move, click again (or type a distance)">⇕</button>
+    <button class="tool-btn" data-tool="move"     title="Move (M) — click entity, move, click again. Ctrl = copy. Arrow keys lock axis">✥</button>
+    <button class="tool-btn" data-tool="rotate"   title="Rotate (Q) — click center, reference point, then angle. Ctrl = rotate a copy">↻</button>
+    <button class="tool-btn" data-tool="scale"    title="Scale (S) — drag a green grip. Corners = uniform, sides = one axis. Ctrl = about center">⤢</button>
+    <button class="tool-btn" data-tool="offset"   title="Offset (F) — click a face, move inward/outward for a parallel loop">⧈</button>
+    <button class="tool-btn" data-tool="followme" title="Follow Me — select path edges first, then click the profile face to extrude along the path">∿</button>
+    <button class="tool-btn" data-tool="tape"     title="Tape Measure (T) — click two points to measure and place a guide">📏</button>
+    <span class="tb-sep"></span>
+    <button class="tool-btn" data-tool="paint"    title="Paint Bucket (B) — pick a color, click faces">🪣</button>
+    <button class="tool-btn" data-tool="eraser"   title="Eraser (E) — click or drag over edges/faces">🧽</button>
+    <span class="tb-sep"></span>
+    <button class="tool-btn" data-tool="orbit"    title="Orbit (O) — drag to orbit. Middle-mouse always orbits">🔄</button>
+    <button class="tool-btn" data-tool="pan"      title="Pan (H) — drag to pan. Shift+middle-mouse always pans">✋</button>
+    <button class="action-btn" id="btn-zoom-extents" title="Zoom Extents (Shift+Z)">⛶</button>
+    <span class="tb-sep"></span>
+    <button class="action-btn" id="btn-undo" title="Undo (Ctrl+Z)">↩</button>
+    <button class="action-btn" id="btn-redo" title="Redo (Ctrl+Y)">↪</button>
+  </div>
+
+  <!-- ======================= MAIN AREA ======================= -->
+  <div id="main">
+    <!-- Outliner dock (left) -->
+    <div id="outliner-dock" class="hidden">
+      <div class="outliner-header">
+        <span>🗂 Outliner</span>
+        <span class="dock-header-actions">
+          <button id="btn-outliner-refresh" title="Refresh">⟳</button>
+          <button id="btn-outliner-close" title="Close">✕</button>
+        </span>
+      </div>
+      <input id="outliner-filter" type="text" placeholder="Filter" autocomplete="off" spellcheck="false">
+      <div id="outliner-tree"></div>
+    </div>
+    <div id="layers-dock" class="hidden">
+      <div class="outliner-header">
+        <span>🧱 Layers</span>
+        <span class="dock-header-actions">
+          <button id="btn-layers-all" title="Show everything">👁 All</button>
+          <button id="btn-layers-close" title="Close">✕</button>
+        </span>
+      </div>
+      <div id="layers-list"></div>
+    </div>
+    <div id="viewport-container">
+      <div id="viewport"></div>
+      <div id="select-rect" class="hidden"></div>
+      <!-- Paint palette -->
+      <div id="paint-palette" class="floating-panel hidden">
+        <div class="panel-title">Materials</div>
+        <div id="palette-swatches"></div>
+        <div class="palette-custom">
+          <label>Custom <input type="color" id="palette-color-input" value="#cc4444"></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================= RUBY CONSOLE DOCK ======================= -->
+    <div id="ruby-dock" class="hidden">
+      <div class="dock-header">
+        <span>💎 Ruby Console</span>
+        <span class="dock-header-actions">
+          <button id="btn-ruby-load" title="Load a .rb script file into the workspace">Load Script…</button>
+          <button id="btn-ruby-clear" title="Clear output">Clear</button>
+          <button id="btn-ruby-close" title="Close console">✕</button>
+        </span>
+      </div>
+      <div id="ruby-output"></div>
+      <div class="dock-input-area">
+        <textarea id="ruby-input" spellcheck="false"
+          placeholder="# SketchUp-style Ruby — Enter runs, Shift+Enter = new line. Units: inches
+ents = Sketchup.active_model.entities
+face = ents.add_face([0,0,0],[48,0,0],[48,48,0],[0,48,0])
+face.pushpull 96"></textarea>
+        <div class="dock-input-buttons">
+          <button id="btn-ruby-run" title="Run (Enter)">▶ Run</button>
+          <span id="ruby-status" class="ruby-status">Ruby engine loads on first run</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================= AI ASSISTANT DOCK ======================= -->
+    <div id="ai-dock" class="hidden">
+      <div class="dock-header">
+        <span>✨ AI Assistant</span>
+        <span class="dock-header-actions">
+          <button id="btn-ai-clear" title="Start a new conversation">New Chat</button>
+          <button id="btn-ai-close" title="Close">✕</button>
+        </span>
+      </div>
+      <div id="ai-messages"></div>
+      <div class="dock-input-area">
+        <textarea id="ai-input" spellcheck="false"
+          placeholder="Describe what to build — e.g. a 12x16 gazebo with a hip roof. Enter sends, Shift+Enter = new line."></textarea>
+        <div class="dock-input-buttons">
+          <button id="btn-ai-send" title="Send (Enter)">➤ Send</button>
+          <span id="ai-status" class="ruby-status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= STATUS BAR ======================= -->
+  <div id="statusbar">
+    <span id="status-hint">Ready.</span>
+    <span class="status-spacer"></span>
+    <label id="vcb-label" for="vcb-input">Measurements</label>
+    <input id="vcb-input" type="text" autocomplete="off" spellcheck="false">
+  </div>
+
+  <!-- ======================= DIALOGS ======================= -->
+  <div id="dialog-backdrop" class="hidden">
+    <div id="dialog">
+      <div id="dialog-title"></div>
+      <div id="dialog-body"></div>
+      <div id="dialog-buttons"><button id="dialog-close">Close</button></div>
+    </div>
+  </div>
+
+  <input type="file" id="file-open-model" accept=".json,.skpjson" class="hidden">
+  <input type="file" id="file-open-ruby" accept=".rb,.txt" multiple class="hidden">
+  <input type="file" id="file-open-rbz" accept=".rbz,.zip" multiple class="hidden">
+  <input type="file" id="file-site-csv" accept=".csv,.txt" class="hidden">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/viewport.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/samples.js"></script>
+  <script src="js/ruby.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/spacemouse.js"></script>
+  <script src="js/bridge.js"></script>
+  <script src="js/assistant.js"></script>
+</body>
+</html>
